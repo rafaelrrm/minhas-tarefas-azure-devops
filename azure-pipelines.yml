@@ -1,0 +1,62 @@
+# Node.js
+# Build a general Node.js project with npm.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+# O identificador "trigger" recebe como parâmetro uma lista de branches. 
+# Sempre que uma das branches listadas receber alguma alteração no código, isso resultará em uma nova execução da pipeline de build.
+trigger:
+- master
+- dev
+
+# O identicador "pool" se refere ao "agent pool".
+
+# Um "agent" no Azure DevOps é um software que é instalado no servidor e que é responsável pelo build e o deploy.
+# No nosso exemplo, estamos usando um "agent" pré-configurado pela Microsoft mas é possível configurá-lo, caso seja necessário uma maior necessidade de personalização.
+
+# No identificador "vmImage", estamos especificando o sistema operacional que irá rodar na máquina virtual em que a nossa aplicação será executada.
+pool:
+  vmImage: 'Ubuntu-20.04'
+
+# O identificador "steps" marca uma lista de comandos que será executado em sequência.
+steps:
+
+# Com o identificador "bash", é possível executar comandos bash no servidor.
+# para usar uma variável, usa-se a notação $(nome_da_variável).
+- bash: |
+    echo "Início do teste de print usando bash. É assim que se usa as variáveis de build que foram declaradas como variáveis públicas na (build pipeline) com a linguagem Bash..."
+    echo "BUILD_BASH_VAR_1 = $(BUILD_BASH_VAR_1)"
+    echo "BUILD_BASH_VAR_2 = $(BUILD_BASH_VAR_2)"
+    echo "Fim do teste de print."
+
+# O identificador "task" representa comandos de ferramentas pré-definas do Azure devOps.
+# A ferramenta NodeTool@0 serve para instalar uma versão específica do NodeJS no servidor. Nesse caso estamos instalando o NodeJS 14.
+- task: NodeTool@0
+  inputs:
+    versionSpec: '14.x'
+  displayName: 'Install Node.js'
+
+# Com o identificador "script" podemos entrar com um comando no terminal, igual como se digitássemos esse comando no terminal.
+# nesse caso, estamos executando o comando "npm install" para instalar as dependências npm do projeto JavaScript.
+- script: |
+    npm install
+  displayName: 'npm install'
+
+# A ferramenta ArchiveFiles@2 serve para comprimir o nosso código fonte em um arquivo .zip diminuir o tamanho do arquivo que será enviado para deploy.
+- task: ArchiveFiles@2
+  displayName: 'Archive files'
+  inputs:
+    rootFolderOrFile: '$(System.DefaultWorkingDirectory)'
+    includeRootFolder: false
+    archiveType: zip
+    archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
+    replaceExistingArchive: true
+
+# A ferraementa PublishBuildArtifacts@1 serve para publicar como artefato (fazendo o upload) do nosso código fonte.
+# Nesso caso, estamos fazendo a publicação do nosso arquivo .zip criado na etapa anterior e dando à esse artefato o nome padrão de "drop".
+# Esse arquivo .zip publicado no artefato "drop" será baixado e usado pela pipeline de release.   
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
